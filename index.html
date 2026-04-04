@@ -1,52 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jio Hotstar iOS Player</title>
+  <title>Fox Cricket</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
+  <meta name="referrer" content="no-referrer"/>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- Plyr CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css"/>
 
-<style>
-body {
-    margin: 0;
-    background: black;
-}
+  <!-- HLS.js -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-video {
-    width: 100%;
-    height: 100vh;
-    background: black;
-}
-</style>
+  <!-- Plyr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.polyfilled.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      overflow: hidden;
+    }
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: black;
+    }
+  </style>
 </head>
 
 <body>
 
-<video id="video" controls autoplay playsinline></video>
+<video id="player" controls autoplay playsinline></video>
 
 <script>
-const video = document.getElementById('video');
-const videoSrc = "https://dillzy-stream.sayanwork-studioo.workers.dev/live/abc123.m3u8";
+const video = document.getElementById("player");
+const source = "https://dillzy-stream.sayanwork-studioo.workers.dev/live/abc123.m3u8";
+
+let player;
+
+function setupPlayer(hls, qualities = []) {
+  player = new Plyr(video, {
+    autoplay: true,
+    controls: [
+      'play','progress','current-time',
+      'mute','volume','fullscreen'
+    ],
+    settings: ['quality'],
+    quality: qualities.length ? {
+      default: qualities[0],
+      options: qualities,
+      forced: true,
+      onChange: q => {
+        if (hls) {
+          hls.levels.forEach((level, i) => {
+            if (level.height === q) hls.currentLevel = i;
+          });
+        }
+      }
+    } : {}
+  });
+
+  // Auto resume (optional)
+  setInterval(() => {
+    if (video.paused && video.readyState > 2) {
+      video.play().catch(()=>{});
+    }
+  }, 5000);
+}
 
 if (Hls.isSupported()) {
-    const hls = new Hls({
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60
-    });
+  const hls = new Hls({
+    enableWorker: true,
+    lowLatencyMode: true
+  });
 
-    hls.loadSource(videoSrc);
-    hls.attachMedia(video);
+  hls.loadSource(source);
+  hls.attachMedia(video);
 
-    hls.on(Hls.Events.MANIFEST_PARSED, function () {
-        video.play();
-    });
+  hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+    const qualities = data.levels.map(l => l.height).sort((a,b)=>b-a);
+    video.play().catch(()=>{});
+    setupPlayer(hls, qualities);
+  });
 
-} else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = videoSrc;
-    video.addEventListener('loadedmetadata', function () {
-        video.play();
-    });
+  // Error recovery
+  hls.on(Hls.Events.ERROR, (_, data) => {
+    if (data.fatal) {
+      hls.startLoad();
+    }
+  });
+
+} else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+  video.src = source;
+  video.addEventListener("loadedmetadata", () => {
+    video.play().catch(()=>{});
+    setupPlayer(null);
+  });
 }
 </script>
 
