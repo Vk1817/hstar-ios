@@ -6,7 +6,7 @@
   <title>Jio Hotstar iOS</title>
 
   <!-- Plyr UI -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css"/>
 
   <!-- HLS.js -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -20,6 +20,7 @@
       background: black;
       overflow: hidden;
     }
+
     video {
       width: 100%;
       height: 100vh;
@@ -38,9 +39,7 @@ const source = "https://dillzy-stream.sayanwork-studioo.workers.dev/live/abc123.
 
 let player;
 
-/* =========================
-   SETUP PLAYER
-========================= */
+/* PLAYER SETUP */
 function initPlayer(hls, qualities = []) {
   player = new Plyr(video, {
     autoplay: true,
@@ -66,14 +65,10 @@ function initPlayer(hls, qualities = []) {
   video.play().catch(()=>{});
 }
 
-/* =========================
-   NATIVE FIRST (IMPORTANT)
-========================= */
+/* IMPORTANT: Native first */
 video.src = source;
 
-/* =========================
-   HLS SUPPORT
-========================= */
+/* HLS.js Support */
 if (Hls.isSupported()) {
   const hls = new Hls({
     enableWorker: true,
@@ -88,10 +83,9 @@ if (Hls.isSupported()) {
     initPlayer(hls, qualities);
   });
 
-  /* ERROR FIX */
+  /* Error fallback */
   hls.on(Hls.Events.ERROR, function (_, data) {
     if (data.fatal) {
-      console.log("Fallback to native");
       video.src = source;
     }
   });
@@ -102,18 +96,14 @@ if (Hls.isSupported()) {
   });
 }
 
-/* =========================
-   AUTO RESUME
-========================= */
+/* Auto resume */
 setInterval(()=>{
   if(video.paused && video.readyState>2){
     video.play().catch(()=>{});
   }
 },4000);
 
-/* =========================
-   AUTO UNMUTE
-========================= */
+/* Auto unmute */
 function unmute() {
   video.muted = false;
   video.volume = 1;
