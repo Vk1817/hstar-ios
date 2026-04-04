@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Fox Cricket</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
-  <meta name="referrer" content="no-referrer"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jio Hotstar iOS</title>
 
-  <!-- Plyr CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css"/>
+  <!-- Plyr UI -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
 
   <!-- HLS.js -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-  <!-- Plyr JS -->
+  <!-- Plyr -->
   <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.polyfilled.js"></script>
 
   <style>
@@ -20,14 +20,9 @@
       background: black;
       overflow: hidden;
     }
-    html, body {
-      height: 100%;
-      width: 100%;
-    }
     video {
       width: 100%;
-      height: 100%;
-      object-fit: contain;
+      height: 100vh;
       background: black;
     }
   </style>
@@ -35,7 +30,7 @@
 
 <body>
 
-<video id="player" controls autoplay playsinline></video>
+<video id="player" autoplay playsinline muted controls></video>
 
 <script>
 const video = document.getElementById("player");
@@ -43,7 +38,10 @@ const source = "https://dillzy-stream.sayanwork-studioo.workers.dev/live/abc123.
 
 let player;
 
-function setupPlayer(hls, qualities = []) {
+/* =========================
+   SETUP PLAYER
+========================= */
+function initPlayer(hls, qualities = []) {
   player = new Plyr(video, {
     autoplay: true,
     controls: [
@@ -65,14 +63,17 @@ function setupPlayer(hls, qualities = []) {
     } : {}
   });
 
-  // Auto resume (optional)
-  setInterval(() => {
-    if (video.paused && video.readyState > 2) {
-      video.play().catch(()=>{});
-    }
-  }, 5000);
+  video.play().catch(()=>{});
 }
 
+/* =========================
+   NATIVE FIRST (IMPORTANT)
+========================= */
+video.src = source;
+
+/* =========================
+   HLS SUPPORT
+========================= */
 if (Hls.isSupported()) {
   const hls = new Hls({
     enableWorker: true,
@@ -84,24 +85,44 @@ if (Hls.isSupported()) {
 
   hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
     const qualities = data.levels.map(l => l.height).sort((a,b)=>b-a);
-    video.play().catch(()=>{});
-    setupPlayer(hls, qualities);
+    initPlayer(hls, qualities);
   });
 
-  // Error recovery
-  hls.on(Hls.Events.ERROR, (_, data) => {
+  /* ERROR FIX */
+  hls.on(Hls.Events.ERROR, function (_, data) {
     if (data.fatal) {
-      hls.startLoad();
+      console.log("Fallback to native");
+      video.src = source;
     }
   });
 
 } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-  video.src = source;
   video.addEventListener("loadedmetadata", () => {
-    video.play().catch(()=>{});
-    setupPlayer(null);
+    initPlayer(null);
   });
 }
+
+/* =========================
+   AUTO RESUME
+========================= */
+setInterval(()=>{
+  if(video.paused && video.readyState>2){
+    video.play().catch(()=>{});
+  }
+},4000);
+
+/* =========================
+   AUTO UNMUTE
+========================= */
+function unmute() {
+  video.muted = false;
+  video.volume = 1;
+  document.removeEventListener("click", unmute);
+  document.removeEventListener("touchstart", unmute);
+}
+document.addEventListener("click", unmute);
+document.addEventListener("touchstart", unmute);
+
 </script>
 
 </body>
