@@ -1,163 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Player</title>
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+  <meta charset="UTF-8">
+  <title>Hi - Odysee</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        #player-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-57TPN48YM8"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
 
-        .plyr {
-            width: 100%;
-            height: 100%;
-        }
+    gtag('config', 'G-57TPN48YM8');
+  </script>
 
-        #loadingScreen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 18px;
-            z-index: 10;
-        }
-    </style>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+    iframe {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+  </style>
 </head>
+
 <body>
 
-<div id="player-container">
-    <div id="loadingScreen">Loading...</div>
-    <video id="player" playsinline></video>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
-
-<script>
-    // 5-minute refresh logic (kept from original for stream stability)
-    setTimeout(function() {
-        location.reload();
-    }, 300000);
-
-    // Exact proxy from original code
-    const PROXY = "https://sony-liv-proxyb.wasmer.app/stream_proxy.php?url=";
-
-    function getParam(n) { return new URLSearchParams(location.search).get(n); }
-
-    let finalURL = getParam('url');
-    // Channel string from original code
-    const channel = 'sgsafsfsfsfsfs'; 
-
-    async function fetchKickM3U8(channelName){
-        const endpoint = "https://kick.com/api/v2/channels/" + encodeURIComponent(channelName);
-        try {
-            const res = await fetch(endpoint);
-            const data = await res.json();
-            if (!data.livestream) return null;
-            const realURL = data.playback_url;
-            return PROXY + encodeURIComponent(realURL);
-        } catch(e){ return null; }
-    }
-
-    async function startPlayer() {
-        // If channel is provided but no URL, fetch from Kick API
-        if(channel && !finalURL){
-            const url = await fetchKickM3U8(channel);
-            if(!url){
-                document.getElementById("loadingScreen").innerHTML = "<h2>Fetch Failed</h2>";
-                return;
-            } else {
-                location.href = location.pathname + "?url=" + encodeURIComponent(url);
-                return;
-            }
-        }
-
-        if(!finalURL){
-            document.getElementById("loadingScreen").innerHTML = "<h2>No URL Provided</h2>";
-            return;
-        }
-
-        // Apply proxy if not already applied
-        if(!finalURL.startsWith(PROXY) && !finalURL.startsWith('blob:')){
-            finalURL = PROXY + encodeURIComponent(finalURL);
-        }
-
-        const video = document.getElementById('player');
-
-        if(Hls.isSupported()){
-            const hls = new Hls();
-            hls.loadSource(finalURL);
-            hls.attachMedia(video);
-
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                const availableQualities = hls.levels.map(l => l.height);
-                const qualityOptions = [...new Set(availableQualities), 'auto'];
-
-                const player = new Plyr(video, {
-                    autoplay: true,
-                    muted: false,
-                    controls: ['play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
-                    settings: ['quality'],
-                    quality: {
-                        default: 'auto',
-                        options: qualityOptions,
-                        forced: true,
-                        onChange: (q) => {
-                            if(q === 'auto'){
-                                hls.currentLevel = -1;
-                            } else {
-                                const index = hls.levels.findIndex(l => l.height === parseInt(q));
-                                hls.currentLevel = index;
-                            }
-                        }
-                    }
-                });
-
-                // Hide loading screen
-                document.getElementById("loadingScreen").style.display = "none";
-                video.play().catch(() => {
-                    // Interaction required for some browsers
-                    document.addEventListener('click', () => {
-                        video.play();
-                    }, { once: true });
-                });
-            });
-
-            hls.on(Hls.Events.ERROR, (event, data) => {
-                if (data.fatal) {
-                    document.getElementById("loadingScreen").innerHTML = "<h2>Stream Error</h2>";
-                }
-            });
-
-        } else if(video.canPlayType('application/vnd.apple.mpegurl')){
-            video.src = finalURL;
-            new Plyr(video, { autoplay: true });
-            video.onloadedmetadata = () => {
-                document.getElementById("loadingScreen").style.display = "none";
-            };
-        }
-    }
-
-    window.onload = startPlayer;
-</script>
+<iframe
+  src="https://allrounder-live4.pages.dev/hotstar"
+  allow="fullscreen; autoplay"
+  allowfullscreen
+  sandbox="allow-scripts allow-same-origin allow-presentation allow-popups">
+</iframe>
 
 </body>
 </html>
