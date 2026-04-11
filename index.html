@@ -1,45 +1,163 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Hi - Odysee</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fox Cricket</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="referrer" content="no-referrer"/>
 
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-57TPN48YM8"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-57TPN48YM8');
-  </script>
+  <!-- Plyr CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css"/>
+
+  <!-- HLS.js -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <!-- Plyr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.polyfilled.js"></script>
 
   <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
+    body {
+      background:#000;
+      margin:0;
+      overflow:hidden;
     }
-    iframe {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
+    html, body {
+      height:100%;
+      width:100%;
+    }
+    .video-container {
+      position:relative;
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    video {
+      width:100%;
+      height:100%;
+      object-fit:contain;
+    }
+    .plyr {
+      height:100%;
+      width:100%;
     }
   </style>
 </head>
+
 <body>
 
-<iframe 
-  src="https://player.kick.com/Sayan0123456"
-  style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"
-  sandbox="allow-scripts allow-same-origin allow-presentation"
-  allow="autoplay; encrypted-media"
-  allowfullscreen>
-</iframe>
+<div class="video-container">
+  <video id="player" playsinline preload="metadata"></video>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const video = document.getElementById("player");
+
+  const source = "https://vsd252.okcdn.ru/cmaf/14454858517247/sig/asKfv4wY-zc/expires/1775987122025/srcIp/152.56.135.221/urls/45.136.21.45/clientType/36/srcAg/CHROME/mid/13573858805759/get/hls_13573858805759.9YIIjrSju4M.m3u8";
+
+  let player;
+  let hls;
+
+  const defaultOptions = {
+    autoplay: true,
+    muted: true,
+    controls: [
+      'play', 'rewind', 'fast-forward', 'progress',
+      'current-time', 'mute', 'volume',
+      'settings', 'fullscreen'
+    ],
+    settings: ['quality']
+  };
+
+  function initPlayer(qualities = []) {
+    player = new Plyr(video, {
+      ...defaultOptions,
+      quality: qualities.length ? {
+        default: qualities[0],
+        options: qualities,
+        forced: true,
+        onChange: q => {
+          if (!hls) return;
+          hls.levels.forEach((level, i) => {
+            if (level.height === q) {
+              hls.currentLevel = i;
+            }
+          });
+        }
+      } : {}
+    });
+
+    // 🔊 Unmute on interaction
+    const unmute = () => {
+      video.muted = false;
+      video.volume = 1;
+      document.removeEventListener("click", unmute);
+      document.removeEventListener("touchstart", unmute);
+    };
+    document.addEventListener("click", unmute);
+    document.addEventListener("touchstart", unmute);
+
+    // 🔁 Auto Resume
+    setInterval(() => {
+      if (video.paused && video.readyState > 2) {
+        video.play().catch(()=>{});
+      }
+    }, 3000);
+  }
+
+  function startStream() {
+    if (Hls.isSupported()) {
+      hls = new Hls({
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        liveSyncDuration: 5
+      });
+
+      hls.loadSource(source);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+        const qualities = data.levels
+          .map(l => l.height)
+          .sort((a,b) => b - a);
+
+        initPlayer(qualities);
+        video.play().catch(()=>{});
+      });
+
+      // 🔥 Smart Error Recovery
+      hls.on(Hls.Events.ERROR, function (_, data) {
+        if (data.fatal) {
+          switch(data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              setTimeout(startStream, 2000);
+              break;
+          }
+        }
+      });
+
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = source;
+      video.addEventListener("loadedmetadata", () => {
+        initPlayer();
+        video.play().catch(()=>{});
+      });
+    }
+  }
+
+  startStream();
+
+});
+</script>
 
 </body>
 </html>
