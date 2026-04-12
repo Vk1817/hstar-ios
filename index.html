@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Fox Cricket</title>
+  <title>Hotstar</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <meta name="referrer" content="no-referrer"/>
-
+  
   <!-- Plyr CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css"/>
 
@@ -16,148 +16,122 @@
 
   <style>
     body {
-      background:#000;
-      margin:0;
-      overflow:hidden;
+      background-color: #000;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
     }
     html, body {
-      height:100%;
-      width:100%;
+      height: 100%;
+      width: 100%;
     }
     .video-container {
-      position:relative;
-      width:100%;
-      height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     video {
-      width:100%;
-      height:100%;
-      object-fit:contain;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
     }
     .plyr {
-      height:100%;
-      width:100%;
+      height: 100%;
+      width: 100%;
     }
   </style>
 </head>
-
 <body>
+  <div class="video-container">
+    <video autoplay playsinline muted id="player" controls preload="metadata"></video>
+  </div>
 
-<div class="video-container">
-  <video id="player" playsinline preload="metadata"></video>
-</div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const video = document.getElementById("player");
+      const source = "https://vsd202.okcdn.ru/cmaf/14551624190719/sig/KaWMOYBBroE/expires/1776074389670/srcIp/152.58.188.3/urls/185.226.55.81/clientType/36/srcAg/CHROME/mid/13626208503807/get/hls_13626208503807.9u5ys4FHwhw.m3u8";
 
-<script>
-document.addEventListener("DOMContentLoaded", function () {
+      const defaultOptions = {
+        autoplay: true,
+        controls: [
+          'play', 'rewind', 'fast-forward', 'progress', 'current-time',
+          'mute', 'volume', 'settings', 'fullscreen'
+        ],
+        settings: ['quality']
+      };
 
-  const video = document.getElementById("player");
+      let player;
 
-  const source = "https://vsd252.okcdn.ru/cmaf/14454858517247/sig/asKfv4wY-zc/expires/1775987122025/srcIp/152.56.135.221/urls/45.136.21.45/clientType/36/srcAg/CHROME/mid/13573858805759/get/hls_13573858805759.9YIIjrSju4M.m3u8";
-
-  let player;
-  let hls;
-
-  const defaultOptions = {
-    autoplay: true,
-    muted: true,
-    controls: [
-      'play', 'rewind', 'fast-forward', 'progress',
-      'current-time', 'mute', 'volume',
-      'settings', 'fullscreen'
-    ],
-    settings: ['quality']
-  };
-
-  function initPlayer(qualities = []) {
-    player = new Plyr(video, {
-      ...defaultOptions,
-      quality: qualities.length ? {
-        default: qualities[0],
-        options: qualities,
-        forced: true,
-        onChange: q => {
-          if (!hls) return;
-          hls.levels.forEach((level, i) => {
-            if (level.height === q) {
-              hls.currentLevel = i;
+      function setupPlayer(hls, qualities = []) {
+        player = new Plyr(video, {
+          ...defaultOptions,
+          quality: qualities.length ? {
+            default: qualities[0],
+            options: qualities,
+            forced: true,
+            onChange: q => {
+              hls.levels.forEach((level, index) => {
+                if (level.height === q) {
+                  hls.currentLevel = index;
+                }
+              });
             }
-          });
-        }
-      } : {}
-    });
+          } : {}
+        });
 
-    // 🔊 Unmute on interaction
-    const unmute = () => {
-      video.muted = false;
-      video.volume = 1;
-      document.removeEventListener("click", unmute);
-      document.removeEventListener("touchstart", unmute);
-    };
-    document.addEventListener("click", unmute);
-    document.addEventListener("touchstart", unmute);
-
-    // 🔁 Auto Resume
-    setInterval(() => {
-      if (video.paused && video.readyState > 2) {
-        video.play().catch(()=>{});
-      }
-    }, 3000);
-  }
-
-  function startStream() {
-    if (Hls.isSupported()) {
-      hls = new Hls({
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        liveSyncDuration: 5
-      });
-
-      hls.loadSource(source);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
-        const qualities = data.levels
-          .map(l => l.height)
-          .sort((a,b) => b - a);
-
-        initPlayer(qualities);
-        video.play().catch(()=>{});
-      });
-
-      // 🔥 Smart Error Recovery
-      hls.on(Hls.Events.ERROR, function (_, data) {
-        if (data.fatal) {
-          switch(data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
-              hls.destroy();
-              setTimeout(startStream, 2000);
-              break;
+        // 🔁 AUTO RESUME
+        setInterval(() => {
+          if (video.paused && video.readyState > 2) {
+            video.play().catch(()=>{});
           }
-        }
-      });
+        }, 3000);
 
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = source;
-      video.addEventListener("loadedmetadata", () => {
-        initPlayer();
-        video.play().catch(()=>{});
-      });
-    }
-  }
+        // 🔊 AUTO UNMUTE (on first interaction)
+        const unmute = () => {
+          video.muted = false;
+          video.volume = 1;
+          document.removeEventListener("click", unmute);
+          document.removeEventListener("touchstart", unmute);
+        };
 
-  startStream();
+        document.addEventListener("click", unmute);
+        document.addEventListener("touchstart", unmute);
+      }
 
-});
-</script>
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          autoStartLoad: true
+        });
 
+        hls.loadSource(source);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+          const availableQualities = data.levels.map(l => l.height).sort((a,b) => b - a);
+          video.play().catch(()=>{});
+          setupPlayer(hls, availableQualities);
+        });
+
+        // 🔥 AUTO RECOVER ON ERROR
+        hls.on(Hls.Events.ERROR, function (_, data) {
+          if (data.fatal) {
+            hls.startLoad();
+          }
+        });
+
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = source;
+        video.addEventListener("loadedmetadata", () => {
+          video.play().catch(()=>{});
+          setupPlayer(null);
+        });
+      }
+    });
+  </script>
 </body>
 </html>
